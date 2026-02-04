@@ -1,0 +1,49 @@
+name: Smoke Tests
+
+on:
+  push:
+    branches: ["main"]
+  workflow_dispatch: {}
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install supabase python-dotenv
+
+      - name: Verify secrets present
+        id: verify
+        run: |
+          missing=0
+          [ -z "$SUPABASE_URL" ] && echo "::warning::SUPABASE_URL is not set" && missing=1
+          [ -z "$SUPABASE_SERVICE_ROLE_KEY" ] && echo "::warning::SUPABASE_SERVICE_ROLE_KEY is not set" && missing=1
+          echo "missing=$missing" >> $GITHUB_OUTPUT
+
+      - name: Run ledger test
+        if: steps.verify.outputs.missing == '0'
+        run: |
+          python scripts/test_ledger.py
+
+      - name: Run decision test
+        if: steps.verify.outputs.missing == '0'
+        run: |
+          python scripts/test_decision.py
+
+      - name: Skip note (secrets missing)
+        if: steps.verify.outputs.missing != '0'
+        run: |
+          echo "Secrets missing; skipping live Supabase smoke tests. Configure repository secrets SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY."
