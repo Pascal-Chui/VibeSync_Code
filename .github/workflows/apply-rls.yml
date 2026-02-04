@@ -1,0 +1,46 @@
+name: apply-rls
+
+on:
+  workflow_dispatch: {}
+
+jobs:
+  apply:
+    name: Apply RLS + Seed AIM
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Postgres client
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+
+      - name: Verify connection secret present
+        run: |
+          if [ -z "${{ secrets.SUPABASE_CONNECTION_STRING }}" ]; then
+            echo "Missing SUPABASE_CONNECTION_STRING GitHub secret."
+            exit 1
+          fi
+
+      - name: Apply RLS policies
+        env:
+          CONN: ${{ secrets.SUPABASE_CONNECTION_STRING }}
+        run: |
+          psql "$CONN" -v ON_ERROR_STOP=1 -f .sys/supabase/policies.sql
+
+      - name: Seed AIM (agent_identities)
+        env:
+          CONN: ${{ secrets.SUPABASE_CONNECTION_STRING }}
+        run: |
+          if [ -f .sys/supabase/seed_agent_identities.sql ]; then
+            psql "$CONN" -v ON_ERROR_STOP=1 -f .sys/supabase/seed_agent_identities.sql
+          else
+            echo "No AIM seed file found; skipping"
+          fi
+
+      - name: Sanity check (list tables)
+        env:
+          CONN: ${{ secrets.SUPABASE_CONNECTION_STRING }}
+        run: |
+          psql "$CONN" -c "\dt+ public.*" || true
