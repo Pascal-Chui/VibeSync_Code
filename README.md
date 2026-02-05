@@ -19,6 +19,7 @@ The system operates on a triangular flow:
 /VibeSync_Code/
 ├── .sys/                   # System core (API, Logic, MCP)
 │   ├── core/               # Python logic (ledger_sync.py, decision_sync.py)
+│   ├── mcp/                # Model Context Protocol server
 │   └── supabase/           # SQL schemas & RLS policies
 ├── scripts/                # Utility scripts (tests, seeds)
 ├── vibes/                  # Isolated project environments
@@ -41,7 +42,7 @@ SUPABASE_ANON_KEY=your_anon_key
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
-pip install supabase
+pip install supabase mcp[cli]
 ```
 
 ### 3. Database Security (RLS)
@@ -65,6 +66,13 @@ Initialize the agent identity profile:
 ```bash
 python3 scripts/seed_aim.py
 ```
+
+### 6. MCP Server (Experimental)
+Start the Model Context Protocol server:
+```bash
+mcp run VibeSync_Code/.sys/mcp/server.py
+```
+This exposes the `get_status`, `read_memory`, and `log_decision` tools to compatible clients (Claude, Cursor, etc.).
 
 ---
 **Author**: Pascal Chui & MacBot Architect
