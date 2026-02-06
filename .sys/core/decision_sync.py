@@ -3,14 +3,58 @@
 from __future__ import annotations
 
 import logging
-import os
-from typing import Any
+from typing import Sequence
 
-from dotenv import load_dotenv
-from supabase import Client, create_client
 from core.ledger_sync import load_supabase_client
 
 LOGGER = logging.getLogger("decision_sync")
+
+
+def log_decision_with_ledger(
+    agent_id: str,
+    vibe_id: str,
+    intent: str,
+    decision: str,
+    rationale: str,
+    files_touched: Sequence[str] | None = None,
+    status: str = "decision",
+    embedding: list[float] | None = None,
+) -> dict[str, str]:
+    """Insert ledger + decision in one RPC transaction.
+
+    Expects a Supabase RPC function named ``log_decision_with_ledger`` that
+    returns ``ledger_id`` and ``decision_id``.
+    """
+    client = load_supabase_client()
+
+    payload = {
+        "p_agent_id": agent_id,
+        "p_vibe_id": vibe_id,
+        "p_intent": intent,
+        "p_files_touched": list(files_touched or []),
+        "p_status": status,
+        "p_decision": decision,
+        "p_rationale": rationale,
+        "p_embedding": embedding,
+    }
+
+    try:
+        response = client.rpc("log_decision_with_ledger", payload).execute()
+    except Exception as exc:
+        LOGGER.exception("Supabase RPC log_decision_with_ledger failed.")
+        raise RuntimeError("Supabase RPC log_decision_with_ledger failed.") from exc
+
+    if not response.data:
+        raise RuntimeError("Supabase RPC log_decision_with_ledger returned no data.")
+
+    row = response.data[0] if isinstance(response.data, list) else response.data
+    ledger_id = row.get("ledger_id")
+    decision_id = row.get("decision_id")
+
+    if not ledger_id or not decision_id:
+        raise RuntimeError("Supabase RPC log_decision_with_ledger missing ids.")
+
+    return {"ledger_id": str(ledger_id), "decision_id": str(decision_id)}
 
 def log_decision(
     ledger_id: str,
