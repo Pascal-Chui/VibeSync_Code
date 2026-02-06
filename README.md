@@ -36,13 +36,14 @@ Create a `.env` file in `VibeSync_Code/` (do not commit it):
 SUPABASE_URL=your_project_url
 SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
 SUPABASE_ANON_KEY=your_anon_key
+OPENAI_API_KEY=your_openai_api_key
 ```
 
 ### 2. Install Dependencies
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
-pip install supabase mcp[cli]
+pip install supabase mcp[cli] openai
 ```
 
 ### 3. Database Security (RLS)
@@ -73,6 +74,7 @@ Start the Model Context Protocol server:
 mcp run VibeSync_Code/.sys/mcp/server.py
 ```
 This exposes the `get_status`, `read_memory`, and `log_decision` tools to compatible clients (Claude, Cursor, etc.).
+`read_memory` now uses OpenAI `text-embedding-3-small` + Supabase RPC `match_decisions` for vector search.
 
 ---
 **Author**: Pascal Chui & MacBot Architect
